@@ -106,6 +106,12 @@ struct thread
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
+
+struct priority_queue {
+  struct list prio_list[PRI_MAX + 1];
+  int cur_max_priority;  
+}
+
 extern bool thread_mlfqs;
 
 void thread_init (void);
@@ -119,6 +125,8 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
+
+void prio_queue_init(void);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);

@@ -107,6 +107,10 @@ void
 timer_sleep (int64_t ticks) 
 {
 
+  if(ticks < 0) {
+  return;
+  }
+
   lock_acquire(&lock_alarm); 
 //  ASSERT (intr_get_level () == INTR_ON);
   struct thread *cur_thread = thread_current();
