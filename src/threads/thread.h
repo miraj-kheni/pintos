@@ -110,7 +110,7 @@ struct thread
 struct priority_queue {
   struct list prio_list[PRI_MAX + 1];
   int cur_max_priority;  
-}
+};
 
 extern bool thread_mlfqs;
 

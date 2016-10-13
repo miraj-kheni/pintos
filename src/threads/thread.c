@@ -45,9 +45,6 @@ struct kernel_thread_frame
     void *aux;                  /* Auxiliary data for function. */
   };
 
-/* Priority Queue for the priority schedular */
-static struct priority_queue ready_queue_prio; 
-
 /* Statistics. */
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
@@ -73,6 +70,19 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+void insert_prio_queue(struct thread *t);
+static bool priority_compare(const struct list_elem *a_,const struct list_elem *b_, void *aux UNUSED);
+
+
+static bool
+priority_compare(const struct list_elem *a_,const struct list_elem *b_, void *aux UNUSED)
+{
+  const struct thread *t1 = list_entry(a_, struct thread, elem);
+  const struct thread *t2 = list_entry(b_, struct thread, elem);
+
+  return t1->priority > t2->priority;
+}
+
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -95,7 +105,6 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-  prio_queue_init();
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -112,7 +121,7 @@ thread_start (void)
   /* Create the idle thread. */
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
-  thread_create ("idle", -1, idle, &idle_started);
+  thread_create ("idle", PRI_MIN, idle, &idle_started);
 
   /* Start preemptive thread scheduling. */
   intr_enable ();
@@ -217,17 +226,6 @@ thread_create (const char *name, int priority,
 }
 
 /* Initializer function for priority queue */
-void
-prio_queue_init()
-{
-  int i = 0;
-  for(i = PRI_MIN; i<= PRI_MAX; i++) {
-    list_init(&ready_queue_prio.prio_list[i]);
-  }
-  ready_queue_prio.cur_max_prio = -1; 
-}
-
-
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -262,7 +260,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  insert_prio_queue(t);
+  list_insert_ordered(&ready_list, &t->elem, priority_compare, NULL);
   //list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -333,8 +331,8 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
-    insert_prio_queue(cur);
+  
+  list_insert_ordered(&ready_list, &cur->elem, priority_compare, NULL);
   //  list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
@@ -363,6 +361,9 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  if(new_priority < list_entry(list_front(&ready_list), struct thread, elem)->priority) {
+    thread_yield();
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -512,17 +513,10 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
-  //if (list_empty (&ready_list))
-  //  return idle_thread;
-  //else
-  //  return list_entry (list_pop_front (&ready_list), struct thread, elem);
- 
-  if(ready_queue_prio.cur_max_prio == -1) {
+  if (list_empty (&ready_list))
     return idle_thread;
-  }
-  else {
-    return list_entry (list_pop_front (&ready_queue_prio.prio_list[ready_queue_prio.cur_max_prio]), struct thread, elem);
-  } 
+  else
+    return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -610,12 +604,4 @@ allocate_tid (void)
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
-uint32_t thread_stack_ofs = offsetof (struct thread, stack);i
-
-void insert_prio_queue(struct thread *t)
-{
-  list_push_back(&ready_queue_prio.prio_list[t->priority], &t->elem);
-  if(t->priority > ready_queue_prio.cur_max_prio) {
-    ready_queue_prio.cur_max_prio = t->priority; 
-  }
-}
+uint32_t thread_stack_ofs = offsetof (struct thread, stack);
