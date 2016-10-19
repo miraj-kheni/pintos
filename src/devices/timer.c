@@ -45,6 +45,7 @@ static bool wakeup_compare(const struct list_elem *a_, const struct list_elem *b
   return a->wakeup_time < b->wakeup_time;
 }
 
+
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -111,18 +112,14 @@ timer_sleep (int64_t ticks)
   return;
   }
 
-  lock_acquire(&lock_alarm); 
-//  ASSERT (intr_get_level () == INTR_ON);
+  enum intr_level old_level = intr_disable ();
   struct thread *cur_thread = thread_current();
   cur_thread->wakeup_time = timer_ticks() + ticks;
   list_insert_ordered(&sleep_list, &cur_thread->elem, wakeup_compare, NULL);
-  lock_release(&lock_alarm);
-  enum intr_level old_level = intr_disable ();
-  thread_block();
-  
 
-  //while (timer_elapsed (start) < ticks) 
-  //  thread_yield ();
+  thread_block();
+  intr_set_level(old_level);
+  
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -196,12 +193,22 @@ timer_print_stats (void)
 }
 
 /* Timer interrupt handler. */
+
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-
+  
+  if(thread_mlfqs) {
+    incr_recent_cpu();
+    if(ticks%TIMER_FREQ == 0) {
+      update_recent_cpu_load_avg();
+    }
+    else if(ticks%4 == 0) {
+      update_priority_mlfqs(thread_current(), NULL);
+    }
+  }
   struct list_elem *e;
 
   enum intr_level old_level = intr_disable ();

@@ -24,6 +24,13 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* fixed point type */
+typedef int fixed_t;
+#define SHIFT_AMOUNT 16
+#define SHIFT_MASK ((1 << SHIFT_AMOUNT) - 1)
+#define FP(a) (a << SHIFT_AMOUNT)
+#define FP_MULT(a,b) ((fixed_t)((int64_t)a * (b >> SHIFT_AMOUNT)))
+#define FP_DIV(a,b) ((fixed_t)((((int64_t)a) << SHIFT_AMOUNT) / b))
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -89,6 +96,8 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     int wakeup_time;
+    fixed_t recent_cpu; 
+    int nice;
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -107,12 +116,8 @@ struct thread
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 
-struct priority_queue {
-  struct list prio_list[PRI_MAX + 1];
-  int cur_max_priority;  
-};
-
 extern bool thread_mlfqs;
+extern fixed_t load_avg;
 
 void thread_init (void);
 void thread_start (void);
@@ -147,4 +152,8 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+void incr_recent_cpu(void);
+void update_recent_cpu_load_avg(void);
+void update_priority_mlfqs(struct thread *t, void *aux);
+void preempt_if_needed(void);
 #endif /* threads/thread.h */
