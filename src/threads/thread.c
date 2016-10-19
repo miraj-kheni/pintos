@@ -344,6 +344,7 @@ thread_yield (void)
   if(cur != idle_thread) {
     list_insert_ordered(&ready_list, &cur->elem, priority_compare, NULL);
   }
+  list_sort(&ready_list, priority_compare, NULL);
   cur->status = THREAD_READY;
   schedule();
   intr_set_level (old_level);
@@ -390,7 +391,9 @@ thread_set_nice (int nice)
   enum intr_level old_level = intr_disable();
   struct thread *t = thread_current();
   t->nice = nice;
-  t->priority = (FP(PRI_MAX) - (t->recent_cpu/4) - FP(t->nice*2)) >> 16; 
+  t->priority = ((FP(PRI_MAX) - (t->recent_cpu/4)) - FP(t->nice*2)) >> 16; 
+  t->priority = (t->priority > PRI_MAX)?PRI_MAX:t->priority;
+  t->priority = (t->priority < PRI_MIN)?PRI_MIN:t->priority;
   preempt_if_needed();
   intr_set_level(old_level); 
 }
@@ -635,7 +638,9 @@ update_priority_mlfqs(struct thread *t, void *aux UNUSED)
   if(t == idle_thread) {
     return;
   }
-  t->priority = (FP(PRI_MAX) - (t->recent_cpu/4) - FP(t->nice*2)) >> 16; 
+  t->priority = ((FP(PRI_MAX) - (t->recent_cpu/4)) - FP(t->nice*2)) >> 16;
+  t->priority = (t->priority > PRI_MAX)?PRI_MAX:t->priority;
+  t->priority = (t->priority < PRI_MIN)?PRI_MIN:t->priority;
 }
 
 void
