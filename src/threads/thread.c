@@ -344,7 +344,6 @@ thread_yield (void)
   if(cur != idle_thread) {
     list_insert_ordered(&ready_list, &cur->elem, priority_compare, NULL);
   }
-  //list_sort(&ready_list, priority_compare, NULL);
   cur->status = THREAD_READY;
   schedule();
   intr_set_level (old_level);
@@ -367,11 +366,13 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
+/* Sets the current thread's priority to NEW_PRIORITY. 
+ * if thread_mlfqs is not true then onlt list_donors would be non empty,
+ * hence, for mlfqs normal execution would take place
+ * in case of donated priority, current priority will be changed only if new priority is higher */
 void
 thread_set_priority (int new_priority) 
 {
-  enum intr_level old_level = intr_disable(); 
   if(!list_empty(&thread_current()->list_donors)) {
     thread_current()->base_priority = new_priority;
     if(new_priority > thread_current()->priority) {
@@ -382,7 +383,6 @@ thread_set_priority (int new_priority)
     thread_current()->priority = new_priority;
     thread_current()->base_priority = new_priority; 
   }
-  intr_set_level(old_level);
   preempt_if_needed();
 }
 
@@ -393,11 +393,11 @@ thread_get_priority (void)
   return thread_current ()->priority;
 }
 
-/* Sets the current thread's nice value to NICE. */
+/* Sets the current thread's nice value to NICE. 
+ * because the change in nice value, priority needs to be recalculated */
 void
 thread_set_nice (int nice) 
 {
-  enum intr_level old_level = intr_disable();
   struct thread *t = thread_current();
   t->nice = nice;
   t->priority = ((FP(PRI_MAX) - (t->recent_cpu/4)) - FP(t->nice*2)) >> 16; 
@@ -405,7 +405,6 @@ thread_set_nice (int nice)
   t->priority = (t->priority < PRI_MIN)?PRI_MIN:t->priority;
   list_sort(&ready_list, priority_compare, NULL);
   preempt_if_needed();
-  intr_set_level(old_level); 
 }
 
 /* Returns the current thread's nice value. */
@@ -635,6 +634,8 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
+/* update load_avg and recent_cpu and priorities for all the thread
+ * this method would be called every 1 second */
 void
 update_recent_cpu_load_avg()
 {
@@ -643,9 +644,11 @@ update_recent_cpu_load_avg()
   load_avg = (load_avg*59)/60 + num_active_procs/60;
   thread_foreach(calculate_recent_cpu, NULL);
   thread_foreach(update_priority_mlfqs, NULL);
-  list_sort(&ready_list, priority_compare, NULL); 
+  list_sort(&ready_list, priority_compare, NULL);
 }
 
+/* update priority of running thread, called every 4 ticks
+ * this function is also passed as argument to thread_foreach to calculate priorities of all threads every 1 second*/
 void
 update_priority_mlfqs(struct thread *t, void *aux UNUSED)
 {
@@ -657,6 +660,7 @@ update_priority_mlfqs(struct thread *t, void *aux UNUSED)
   t->priority = (t->priority < PRI_MIN)?PRI_MIN:t->priority;
 }
 
+/* increment recent_cpu of running_thread at every tick */
 void
 incr_recent_cpu()
 {
@@ -664,6 +668,7 @@ incr_recent_cpu()
   t->recent_cpu = t->recent_cpu + FP(1);
 }
 
+/* preempt current thread if its not highest priority process*/
 void
 preempt_if_needed()
 {
