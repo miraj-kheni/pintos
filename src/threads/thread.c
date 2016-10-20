@@ -344,7 +344,7 @@ thread_yield (void)
   if(cur != idle_thread) {
     list_insert_ordered(&ready_list, &cur->elem, priority_compare, NULL);
   }
-  list_sort(&ready_list, priority_compare, NULL);
+  //list_sort(&ready_list, priority_compare, NULL);
   cur->status = THREAD_READY;
   schedule();
   intr_set_level (old_level);
@@ -371,10 +371,19 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
-  if(!list_empty(&ready_list) && new_priority < list_entry(list_front(&ready_list), struct thread, elem)->priority) {
-    preempt_if_needed();
+  enum intr_level old_level = intr_disable(); 
+  if(!list_empty(&thread_current()->list_donors)) {
+    thread_current()->base_priority = new_priority;
+    if(new_priority > thread_current()->priority) {
+      thread_current()->priority = new_priority;
+    }
   }
+  else {
+    thread_current()->priority = new_priority;
+    thread_current()->base_priority = new_priority; 
+  }
+  intr_set_level(old_level);
+  preempt_if_needed();
 }
 
 /* Returns the current thread's priority. */
@@ -394,6 +403,7 @@ thread_set_nice (int nice)
   t->priority = ((FP(PRI_MAX) - (t->recent_cpu/4)) - FP(t->nice*2)) >> 16; 
   t->priority = (t->priority > PRI_MAX)?PRI_MAX:t->priority;
   t->priority = (t->priority < PRI_MIN)?PRI_MIN:t->priority;
+  list_sort(&ready_list, priority_compare, NULL);
   preempt_if_needed();
   intr_set_level(old_level); 
 }
@@ -503,7 +513,10 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  t->recent_cpu = 0; 
+  t->base_priority = priority;
+  t->lock_waiting_for = NULL;  
+  t->recent_cpu = 0;
+  list_init(&t->list_donors); 
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }
@@ -629,7 +642,8 @@ update_recent_cpu_load_avg()
   fixed_t num_active_procs = (t == idle_thread)?FP(list_size(&ready_list)):FP((list_size(&ready_list) + 1));
   load_avg = (load_avg*59)/60 + num_active_procs/60;
   thread_foreach(calculate_recent_cpu, NULL);
-  thread_foreach(update_priority_mlfqs, NULL); 
+  thread_foreach(update_priority_mlfqs, NULL);
+  list_sort(&ready_list, priority_compare, NULL); 
 }
 
 void
@@ -653,9 +667,7 @@ incr_recent_cpu()
 void
 preempt_if_needed()
 {
-  //enum intr_level old_level = intr_disable();
   if(!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list),struct thread, elem)->priority) {
     thread_yield();
   }
-  //intr_set_level(old_level); 
 }

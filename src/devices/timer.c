@@ -116,7 +116,6 @@ timer_sleep (int64_t ticks)
   struct thread *cur_thread = thread_current();
   cur_thread->wakeup_time = timer_ticks() + ticks;
   list_insert_ordered(&sleep_list, &cur_thread->elem, wakeup_compare, NULL);
-
   thread_block();
   intr_set_level(old_level);
   

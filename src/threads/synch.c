@@ -201,7 +201,24 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  enum intr_level old_level = intr_disable(); 
+  if(!thread_mlfqs) {
+    if(lock->holder) {
+      list_push_front(&lock->holder->list_donors, &thread_current()->lock_elem);
+      thread_current()->lock_waiting_for = lock;
+
+      struct thread *t = thread_current();
+      while(t->lock_waiting_for) {
+        if(t->priority > t->lock_waiting_for->holder->priority) {
+          t->lock_waiting_for->holder->priority = t->priority;
+          t = t->lock_waiting_for->holder;
+        }
+      } 
+    }
+  }
+  intr_set_level(old_level);
   sema_down (&lock->semaphore);
+  thread_current()->lock_waiting_for = NULL;  
   lock->holder = thread_current ();
 }
 
@@ -236,9 +253,34 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  enum intr_level old_level = intr_disable(); 
+  if(!list_empty(&thread_current()->list_donors)) {
+    
+    struct list_elem *e;
+    for(e = list_begin(&thread_current()->list_donors); e != list_end(&thread_current()->list_donors); e = list_next(e)) {
+      struct thread *t = list_entry(e, struct thread, lock_elem);
+      if(t->lock_waiting_for == lock) {
+        list_remove(e);
+        t->lock_waiting_for = NULL;
+      }
+    } 
+
+    struct thread *highest_donor = list_entry(list_max(&thread_current()->list_donors, priority_compare, NULL), struct thread, lock_elem);
+    
+    if(thread_current()->base_priority >= highest_donor->priority) {
+      thread_current()->priority = thread_current()->base_priority;
+    }
+    else {
+      thread_current()->priority = highest_donor->priority;
+      thread_yield(); 
+    }
+  }
+
+  intr_set_level(old_level);
   lock->holder = NULL;
   sema_up (&lock->semaphore);
-}
+  
+  }
 
 /* Returns true if the current thread holds LOCK, false
    otherwise.  (Note that testing whether some other thread holds
