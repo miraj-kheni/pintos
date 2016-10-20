@@ -201,8 +201,8 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  enum intr_level old_level = intr_disable(); 
   if(!thread_mlfqs) {
+    enum intr_level old_level = intr_disable();
     if(lock->holder) {
       list_push_front(&lock->holder->list_donors, &thread_current()->lock_elem);
       thread_current()->lock_waiting_for = lock;
@@ -215,8 +215,8 @@ lock_acquire (struct lock *lock)
         }
       } 
     }
+    intr_set_level(old_level);
   }
-  intr_set_level(old_level);
   sema_down (&lock->semaphore);
   thread_current()->lock_waiting_for = NULL;  
   lock->holder = thread_current ();
@@ -253,9 +253,10 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  enum intr_level old_level = intr_disable(); 
+
   if(!list_empty(&thread_current()->list_donors)) {
-    
+    enum intr_level old_level = intr_disable();
+
     struct list_elem *e;
     for(e = list_begin(&thread_current()->list_donors); e != list_end(&thread_current()->list_donors); e = list_next(e)) {
       struct thread *t = list_entry(e, struct thread, lock_elem);
@@ -274,9 +275,9 @@ lock_release (struct lock *lock)
       thread_current()->priority = highest_donor->priority;
       thread_yield(); 
     }
+    intr_set_level(old_level);
   }
 
-  intr_set_level(old_level);
   lock->holder = NULL;
   sema_up (&lock->semaphore);
   

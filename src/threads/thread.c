@@ -59,7 +59,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-fixed_t load_avg; 
+fixed_t load_avg;               /* load average */ 
 
 static void kernel_thread (thread_func *, void *aux);
 
