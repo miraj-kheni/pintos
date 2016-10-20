@@ -184,6 +184,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  sema_init (&lock->donor_list, 1);
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -201,7 +202,8 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  enum intr_level old_level = intr_disable(); 
+  sema_down(&lock->donor_list);
+ // enum intr_level old_level = intr_disable(); 
   if(!thread_mlfqs) {
     if(lock->holder) {
       list_push_front(&lock->holder->list_donors, &thread_current()->lock_elem);
@@ -216,7 +218,8 @@ lock_acquire (struct lock *lock)
       } 
     }
   }
-  intr_set_level(old_level);
+  //intr_set_level(old_level);
+  sema_up(&lock->donor_list);
   sema_down (&lock->semaphore);
   thread_current()->lock_waiting_for = NULL;  
   lock->holder = thread_current ();
@@ -252,8 +255,9 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
-  enum intr_level old_level = intr_disable(); 
+  
+  sema_down(&lock->donor_list);
+  //enum intr_level old_level = intr_disable(); 
   if(!list_empty(&thread_current()->list_donors)) {
     
     struct list_elem *e;
@@ -276,7 +280,8 @@ lock_release (struct lock *lock)
     }
   }
 
-  intr_set_level(old_level);
+  //intr_set_level(old_level);
+  sema_up(&lock->donor_list);
   lock->holder = NULL;
   sema_up (&lock->semaphore);
   
