@@ -32,6 +32,12 @@ sys_exec(const char *cmd_name)
   return process_execute(cmd_name);  
 }
 
+int
+sys_wait(int pid)
+{
+  return process_wait(pid);
+}
+
 void
 sys_exit(int exit_code)
 {
@@ -197,5 +203,8 @@ syscall_handler (struct intr_frame *f)
       ret_code = sys_exec((const char *)*(char **)(f->esp + 4));
       f->eax = ret_code;
       break;
+    case SYS_WAIT:
+      ret_code = sys_wait(*(int *)(f->esp + 4));
+      f->eax = ret_code;
   } 
 }
