@@ -24,6 +24,8 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+#define MAX_FILE 32
+
 /* fixed point type */
 typedef int fixed_t;
 #define SHIFT_AMOUNT 16
@@ -115,6 +117,8 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+  
+    struct file *file_table[MAX_FILE];
   };
 
 struct process_desc {
@@ -123,7 +127,6 @@ struct process_desc {
     int exit_status;
     struct semaphore *wait_sema;
 };
-
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.

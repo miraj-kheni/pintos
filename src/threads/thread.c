@@ -212,6 +212,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  
   process_table[t->tid] = malloc(sizeof(struct process_desc));
   if(thread_current() == initial_thread) {
     process_table[t->tid]->parent_tid = 1;
@@ -223,6 +224,11 @@ thread_create (const char *name, int priority,
   process_table[t->tid]->exit_status = -1;
   process_table[t->tid]->wait_sema = malloc(sizeof(struct semaphore));
   sema_init(process_table[t->tid]->wait_sema, 0); 
+  
+  for(int i=0; i< MAX_FILE; i++) {
+    t->file_table[i] = NULL;
+  }
+
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
      member cannot be observed. */
