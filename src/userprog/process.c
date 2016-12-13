@@ -89,6 +89,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  while(true) {}
   return -1;
 }
 
@@ -235,10 +236,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   } 
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (argv[0]);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", argv[0]);
       goto done; 
     }
 
@@ -251,7 +252,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", file_name);
+      printf ("load: %s: error loading executable\n", argv[0]);
       goto done; 
     }
 
@@ -452,8 +453,7 @@ setup_stack (void **esp, char **argv, int argc)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success) {
-        *esp = PHYS_BASE-12;
-        return success;
+        *esp = PHYS_BASE;
       } 
       else {
         palloc_free_page (kpage);
@@ -464,12 +464,11 @@ setup_stack (void **esp, char **argv, int argc)
   int i=0, arg_len = 0, padding = 0;
   char **arg_ptr = malloc((argc+1)*sizeof(char *));
   arg_ptr[argc] = 0;
-  int j = 0;
  
   for(i = argc - 1; i >= 0; i--) {
     arg_len = strlen(argv[i]);
     *esp = *esp - (arg_len + 1);
-    arg_ptr[j++] = *esp;
+    arg_ptr[i] = (char *)*esp;
     memcpy(*esp, argv[i], arg_len + 1);
   }
   padding = (size_t)*esp % 4;
@@ -477,10 +476,13 @@ setup_stack (void **esp, char **argv, int argc)
     *esp = *esp - padding;
     memcpy(*esp, &arg_ptr[argc], padding);
   } 
-  *esp = *esp - (argc+1)*sizeof(char *);
-  memcpy(*esp, *arg_ptr, (argc+1)*sizeof(char *));
+  for(i = argc; i >= 0; i--) {
+    *esp = *esp - sizeof(char *);
+    memcpy(*esp, &arg_ptr[i], sizeof(char *));
+  }
+  void *arg = *esp; 
   *esp = *esp - sizeof(char **);
-  memcpy(*esp, *esp + sizeof(char **), sizeof(char **)); 
+  memcpy(*esp, &arg, sizeof(char **)); 
   *esp = *esp - sizeof(int);
   memcpy(*esp,&argc,sizeof(int));
   *esp = *esp - sizeof(void *);
