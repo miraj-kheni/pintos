@@ -117,12 +117,23 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
+struct process_desc {
+    bool running;
+    int parent_tid;
+    int exit_status;
+    struct semaphore *wait_sema;
+};
+
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 
 extern bool thread_mlfqs;
 extern fixed_t load_avg;
+
+#define MAX_PROC 256
+extern struct process_desc *process_table[MAX_PROC];
 
 void thread_init (void);
 void thread_start (void);
@@ -164,4 +175,7 @@ void incr_recent_cpu(void);
 void update_recent_cpu_load_avg(void);
 void update_priority_mlfqs(struct thread *t, void *aux);
 void preempt_if_needed(void);
+
+void destroy_process_desc(int tid);
+
 #endif /* threads/thread.h */

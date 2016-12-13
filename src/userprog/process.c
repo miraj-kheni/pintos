@@ -16,6 +16,7 @@
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
+#include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 
@@ -38,9 +39,11 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-
+  char *save_ptr;
+  char *cmd_name = strtok_r(file_name, " ", &save_ptr);
+  
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -89,7 +92,19 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while(true) {}
+  //while(true) {}
+  if(process_table[child_tid] != NULL) {
+    if(process_table[child_tid]->parent_tid != thread_current()->tid) {
+      return -1;
+    }
+    if(process_table[child_tid]->running == true) {
+      sema_down(process_table[child_tid]->wait_sema);
+    }
+    int status = process_table[child_tid]->exit_status;
+    destroy_process_desc(child_tid);
+    process_table[child_tid] = NULL;
+    return status;
+  }  
   return -1;
 }
 

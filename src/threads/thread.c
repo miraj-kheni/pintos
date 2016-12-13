@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -60,6 +61,8 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 bool thread_mlfqs;
 
 fixed_t load_avg;               /* load average */ 
+
+struct process_desc *process_table[MAX_PROC];
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -112,6 +115,10 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  
+  for(int i=0; i< MAX_PROC; i++) {
+    process_table[i] = NULL;
+  }
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -205,7 +212,17 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-
+  process_table[t->tid] = malloc(sizeof(struct process_desc));
+  if(thread_current() == initial_thread) {
+    process_table[t->tid]->parent_tid = 1;
+  }
+  else {
+    process_table[t->tid]->parent_tid = thread_current()->tid;
+  }
+  process_table[t->tid]->running = true;
+  process_table[t->tid]->exit_status = -1;
+  process_table[t->tid]->wait_sema = malloc(sizeof(struct semaphore));
+  sema_init(process_table[t->tid]->wait_sema, 0); 
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
      member cannot be observed. */
@@ -231,6 +248,8 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
   preempt_if_needed();
+  
+  
   return tid;
 }
 
@@ -517,6 +536,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->recent_cpu = 0;
   list_init(&t->list_donors); 
   t->magic = THREAD_MAGIC;
+   
   list_push_back (&all_list, &t->allelem);
 }
 
@@ -675,4 +695,11 @@ preempt_if_needed()
   if(!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list),struct thread, elem)->priority) {
     thread_yield();
   }
+}
+
+void
+destroy_process_desc(int tid)
+{
+  free(process_table[tid]->wait_sema);
+  free(process_table[tid]);
 }

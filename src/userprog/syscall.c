@@ -5,6 +5,7 @@
 #include "threads/thread.h"
 #include "devices/shutdown.h"
 #include "threads/thread.h"
+#include "threads/synch.h"
 #include "filesys/file.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
@@ -26,6 +27,9 @@ int vaddr_to_kvaddr(const void *vaddr) {
 void sys_exit(int exit_code)
 {
   printf("%s: exit(%d)\n", thread_current()->name, exit_code);
+  process_table[thread_current()->tid]->exit_status = exit_code;
+  process_table[thread_current()->tid]->running = false;
+  sema_up(process_table[thread_current()->tid]->wait_sema);
   thread_exit();
 }
 
