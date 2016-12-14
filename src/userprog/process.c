@@ -238,7 +238,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  char *_file_name = malloc(strlen(file_name+ 1));
+  char *_file_name = malloc(strlen(file_name) + 1);
   strlcpy(_file_name, file_name, strlen(file_name) + 1);
 
   char **argv = malloc(32*sizeof(char *)); 
@@ -340,6 +340,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
+  file_deny_write(file);
 
  done:
   /* We arrive here whether the load is successful or not. */

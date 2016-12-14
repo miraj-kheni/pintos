@@ -14,16 +14,18 @@
 #include "threads/vaddr.h"
   
 static void syscall_handler (struct intr_frame *);
-int vaddr_to_kvaddr(const void *vaddr);
+static int vaddr_to_kvaddr(const void *vaddr);
+
+static int
+vaddr_to_kvaddr(const void *vaddr)
+{
+  return (int)pagedir_get_page(thread_current()->pagedir, vaddr);
+}
 
 void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-}
-
-int vaddr_to_kvaddr(const void *vaddr) {
-  return (int)pagedir_get_page(thread_current()->pagedir, vaddr);
 }
 
 int
@@ -200,7 +202,7 @@ syscall_handler (struct intr_frame *f)
       sys_seek(*(int *)(f->esp + 4), *(unsigned *)(f->esp + 8));
       break;
     case SYS_EXEC:
-      ret_code = sys_exec((const char *)*(char **)(f->esp + 4));
+      ret_code = sys_exec((const char *)vaddr_to_kvaddr(*(char **)(f->esp + 4)));
       f->eax = ret_code;
       break;
     case SYS_WAIT:

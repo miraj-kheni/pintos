@@ -135,7 +135,7 @@ struct process_desc {
 extern bool thread_mlfqs;
 extern fixed_t load_avg;
 
-#define MAX_PROC 256
+#define MAX_PROC 32 
 extern struct process_desc *process_table[MAX_PROC];
 
 void thread_init (void);
