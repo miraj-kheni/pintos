@@ -63,12 +63,12 @@ sys_exit(int exit_code)
 {
 
   for(int i = 2; i < MAX_FILE; i++) {
-    if(thread_current()->file_table != NULL) {
+    if(thread_current()->file_table[i] != NULL) {
       file_close(thread_current()->file_table[i]);
       thread_current()->file_table[i] = NULL;
     }
   }
-  for(int i=1; i < MAX_PROC; i++) {
+  /*for(int i=1; i < MAX_PROC; i++) {
     if(process_table[i] != NULL && process_table[i]->parent_tid == thread_current()->tid) {
       if(!process_table[i]->running) {
         printf("destroying %d\n",i);
@@ -76,7 +76,7 @@ sys_exit(int exit_code)
         process_table[i] = NULL;
       }
     } 
-  }
+  }*/
   printf("%s: exit(%d)\n", thread_current()->name, exit_code);
   process_table[thread_current()->tid]->exit_status = exit_code;
   process_table[thread_current()->tid]->running = false;

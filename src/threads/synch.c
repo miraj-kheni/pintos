@@ -211,8 +211,8 @@ lock_acquire (struct lock *lock)
       while(t->lock_waiting_for) {
         if(t->priority > t->lock_waiting_for->holder->priority) {
           t->lock_waiting_for->holder->priority = t->priority;
-          t = t->lock_waiting_for->holder;
         }
+        t = t->lock_waiting_for->holder;
       } 
     }
     intr_set_level(old_level);

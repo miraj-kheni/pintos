@@ -732,5 +732,7 @@ destroy_process_desc(int tid)
 {
   free(process_table[tid]->wait_sema);
   free(process_table[tid]->load_sema);
+  process_table[tid]->load_sema = NULL;
+  process_table[tid]->wait_sema = NULL;
   free(process_table[tid]);
 }

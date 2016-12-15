@@ -24,7 +24,7 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
-#define MAX_FILE 132 
+#define MAX_FILE 32 
 
 /* fixed point type */
 typedef int fixed_t;
