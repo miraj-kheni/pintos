@@ -217,8 +217,14 @@ syscall_handler (struct intr_frame *f)
       sys_exit(*(int *)(f->esp + 4));
       break;
     case SYS_WRITE:
+      if(!is_valid_buffer((const void *)(f->esp + 4),1)) {
+        sys_exit(-1);
+      }
       if(!is_valid_buffer((const void *)*(char **)(f->esp + 8), *(unsigned *)(f->esp + 12))) {
         sys_exit(-1); 
+      }
+      if(!is_valid_buffer((const void *)(f->esp + 12),1)) {
+        sys_exit(-1);
       }
       ret_code = sys_write(*(int *)(f->esp + 4), (const void *)*(char **)(f->esp + 8), *(unsigned *)(f->esp+ 12), &ret_val);
       if(ret_code == -1) {
@@ -227,8 +233,14 @@ syscall_handler (struct intr_frame *f)
       f->eax = ret_val; 
       break;
     case SYS_READ:
+      if(!is_valid_buffer((const void *)(f->esp + 4),1)) {
+        sys_exit(-1);
+      }
       if(!is_valid_buffer((void *)*(char **)(f->esp + 8), *(unsigned *)(f->esp + 12))) {
         sys_exit(-1); 
+      }
+      if(!is_valid_buffer((const void *)(f->esp + 12),1)) {
+        sys_exit(-1);
       }
       ret_code = sys_read(*(int *)(f->esp + 4), *(char **)(f->esp + 8), *(unsigned *)(f->esp+ 12), &ret_val);
       if(ret_code == -1) {
@@ -244,10 +256,16 @@ syscall_handler (struct intr_frame *f)
       f->eax = ret_code;
       break;
     case SYS_CLOSE:
+      if(!is_valid_buffer((const void *)(f->esp + 4),1)) {
+        sys_exit(-1);
+      }
       sys_close(*(int *)(f->esp + 4));
       break;
     case SYS_CREATE:
       if(!is_valid_buffer((const char *)*(char **)(f->esp + 4),1)) {
+        sys_exit(-1);
+      }
+      if(!is_valid_buffer((const void *)(f->esp + 8),1)) {
         sys_exit(-1);
       }
       ret_code = sys_create((const char *)*(char **)(f->esp + 4), *(unsigned *)(f->esp + 8));
@@ -261,14 +279,26 @@ syscall_handler (struct intr_frame *f)
       f->eax = ret_code;
       break;
     case SYS_FILESIZE:
+      if(!is_valid_buffer((const void *)(f->esp + 4),1)) {
+        sys_exit(-1);
+      }
       ret_code = sys_filesize(*(int *)(f->esp + 4));
       f->eax = ret_code;
       break;
     case SYS_TELL:
+      if(!is_valid_buffer((const void *)(f->esp + 4),1)) {
+        sys_exit(-1);
+      }
       ret_code = sys_tell(*(int *)(f->esp + 4));
       f->eax = ret_code;
       break;
     case SYS_SEEK:
+      if(!is_valid_buffer((const void *)(f->esp + 4),1)) {
+        sys_exit(-1);
+      }
+      if(!is_valid_buffer((const void *)(f->esp + 8),1)) {
+        sys_exit(-1);
+      }
       sys_seek(*(int *)(f->esp + 4), *(unsigned *)(f->esp + 8));
       break;
     case SYS_EXEC:
@@ -279,6 +309,9 @@ syscall_handler (struct intr_frame *f)
       f->eax = ret_code;
       break;
     case SYS_WAIT:
+      if(!is_valid_buffer((const void *)(f->esp + 4),1)) {
+        sys_exit(-1);
+      }
       ret_code = sys_wait(*(int *)(f->esp + 4));
       f->eax = ret_code;
       break;
