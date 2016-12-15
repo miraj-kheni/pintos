@@ -117,7 +117,8 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-  
+ 
+    struct file *executable; 
     struct file *file_table[MAX_FILE];
   };
 

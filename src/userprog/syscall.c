@@ -68,6 +68,7 @@ sys_exit(int exit_code)
       thread_current()->file_table[i] = NULL;
     }
   }
+  file_close(thread_current()->executable);
   /*for(int i=1; i < MAX_PROC; i++) {
     if(process_table[i] != NULL && process_table[i]->parent_tid == thread_current()->tid) {
       if(!process_table[i]->running) {
