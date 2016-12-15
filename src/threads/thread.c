@@ -212,18 +212,36 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-  
+  if(t->tid == -1) {
+    return TID_ERROR;
+  } 
+ 
   process_table[t->tid] = malloc(sizeof(struct process_desc));
+  if(process_table[t->tid] == NULL) {
+    return TID_ERROR;
+  }
   if(thread_current() == initial_thread) {
     process_table[t->tid]->parent_tid = 1;
   }
   else {
     process_table[t->tid]->parent_tid = thread_current()->tid;
   }
+  process_table[t->tid]->loaded = false;
   process_table[t->tid]->running = true;
-  process_table[t->tid]->exit_status = -1;
+  process_table[t->tid]->exit_status = 0;
   process_table[t->tid]->wait_sema = malloc(sizeof(struct semaphore));
-  sema_init(process_table[t->tid]->wait_sema, 0); 
+  if(process_table[t->tid]->wait_sema == NULL) {
+    free(process_table[t->tid]);
+    return TID_ERROR;
+  }
+  process_table[t->tid]->load_sema = malloc(sizeof(struct semaphore));
+  if(process_table[t->tid] == NULL) {
+    free(process_table[t->tid]->wait_sema);
+    free(process_table[t->tid]);
+    return TID_ERROR;
+  }
+sema_init(process_table[t->tid]->wait_sema, 0); 
+  sema_init(process_table[t->tid]->load_sema, 0); 
   
   for(int i=0; i< MAX_FILE; i++) {
     t->file_table[i] = NULL;
@@ -650,10 +668,16 @@ allocate_tid (void)
   tid_t tid;
 
   lock_acquire (&tid_lock);
-  tid = next_tid++;
+  for(int i = 1; i < MAX_PROC; i++) {
+    if(process_table[i] == NULL) {
+      lock_release (&tid_lock);
+      return i;
+    }
+  } 
+  //tid = next_tid++;
   lock_release (&tid_lock);
 
-  return tid;
+  return -1;
 }
 
 /* Offset of `stack' member within `struct thread'.
@@ -707,5 +731,6 @@ void
 destroy_process_desc(int tid)
 {
   free(process_table[tid]->wait_sema);
+  free(process_table[tid]->load_sema);
   free(process_table[tid]);
 }

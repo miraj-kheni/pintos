@@ -24,7 +24,7 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
-#define MAX_FILE 32
+#define MAX_FILE 132 
 
 /* fixed point type */
 typedef int fixed_t;
@@ -122,9 +122,11 @@ struct thread
   };
 
 struct process_desc {
+    bool loaded; 
     bool running;
     int parent_tid;
     int exit_status;
+    struct semaphore *load_sema;
     struct semaphore *wait_sema;
 };
 
@@ -135,7 +137,7 @@ struct process_desc {
 extern bool thread_mlfqs;
 extern fixed_t load_avg;
 
-#define MAX_PROC 32 
+#define MAX_PROC 64 
 extern struct process_desc *process_table[MAX_PROC];
 
 void thread_init (void);

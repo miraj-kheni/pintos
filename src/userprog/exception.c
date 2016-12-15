@@ -2,6 +2,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include "userprog/gdt.h"
+#include "userprog/syscall.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
@@ -86,10 +87,10 @@ kill (struct intr_frame *f)
     case SEL_UCSEG:
       /* User's code segment, so it's a user exception, as we
          expected.  Kill the user process.  */
-      printf ("%s: dying due to interrupt %#04x (%s).\n",
-              thread_name (), f->vec_no, intr_name (f->vec_no));
-      intr_dump_frame (f);
-      thread_exit (); 
+      //printf ("%s: dying due to interrupt %#04x (%s).\n",
+      //        thread_name (), f->vec_no, intr_name (f->vec_no));
+      //intr_dump_frame (f);
+      sys_exit(-1);
 
     case SEL_KCSEG:
       /* Kernel's code segment, which indicates a kernel bug.
@@ -122,9 +123,9 @@ kill (struct intr_frame *f)
 static void
 page_fault (struct intr_frame *f) 
 {
-  bool not_present;  /* True: not-present page, false: writing r/o page. */
-  bool write;        /* True: access was write, false: access was read. */
-  bool user;         /* True: access by user, false: access by kernel. */
+  //bool not_present;  /* True: not-present page, false: writing r/o page. */
+  //bool write;        /* True: access was write, false: access was read. */
+  //bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
 
   /* Obtain faulting address, the virtual address that was
@@ -144,18 +145,18 @@ page_fault (struct intr_frame *f)
   page_fault_cnt++;
 
   /* Determine cause. */
-  not_present = (f->error_code & PF_P) == 0;
-  write = (f->error_code & PF_W) != 0;
-  user = (f->error_code & PF_U) != 0;
+  //not_present = (f->error_code & PF_P) == 0;
+  //write = (f->error_code & PF_W) != 0;
+  //user = (f->error_code & PF_U) != 0;
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
+  /*printf ("Page fault at %p: %s error %s page in %s context.\n",
           fault_addr,
           not_present ? "not present" : "rights violation",
           write ? "writing" : "reading",
-          user ? "user" : "kernel");
+          user ? "user" : "kernel");*/
   kill (f);
 }
 

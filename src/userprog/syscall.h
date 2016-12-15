@@ -5,6 +5,7 @@
 
 void syscall_init (void);
 
+int sys_wait(int pid);
 int sys_exec(const char *cmd_name);
 void sys_exit(int exit_code);
 int sys_write(int fd, const void *buffer, unsigned size, int *nbytes_written);

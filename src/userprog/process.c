@@ -7,6 +7,7 @@
 #include <string.h>
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
+#include "userprog/syscall.h"
 #include "userprog/tss.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
@@ -44,8 +45,14 @@ process_execute (const char *file_name)
   
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+  if (tid == TID_ERROR) {
+    palloc_free_page (fn_copy);
+    return -1; 
+  }
+  sema_down(process_table[tid]->load_sema);
+  if(!process_table[tid]->loaded) {
+    return -1;
+  }
   return tid;
 }
 
@@ -67,8 +74,16 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
+  
+  if (!success) {
+    process_table[thread_current()->tid]->loaded = false;
+    sema_up(process_table[thread_current()->tid]->load_sema);
+    sys_exit(-1);
+  }
+  else {
+    process_table[thread_current()->tid]->loaded = true;
+    sema_up(process_table[thread_current()->tid]->load_sema);
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -239,9 +254,16 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   char *_file_name = malloc(strlen(file_name) + 1);
+  if(_file_name == NULL) {
+    return false;
+  }
   strlcpy(_file_name, file_name, strlen(file_name) + 1);
 
   char **argv = malloc(32*sizeof(char *)); 
+  if(argv == NULL) {
+    free(_file_name);
+    return false;
+  }
   char *token, *save_ptr;
   int argc = 0;
  
@@ -340,11 +362,13 @@ load (const char *file_name, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
-  file_deny_write(file);
 
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+  if(success) {
+    file_deny_write(file);
+  }
   return success;
 }
 
@@ -479,6 +503,9 @@ setup_stack (void **esp, char **argv, int argc)
   
   int i=0, arg_len = 0, padding = 0;
   char **arg_ptr = malloc((argc+1)*sizeof(char *));
+  if(arg_ptr == NULL) {
+    return false;
+  } 
   arg_ptr[argc] = 0;
  
   for(i = argc - 1; i >= 0; i--) {
